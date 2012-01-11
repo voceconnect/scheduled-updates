@@ -20,6 +20,9 @@ class Scheduled_Updates {
 		add_action('Meta_Revisions_init', array(__CLASS__, 'setup_term_revisions'));
 		add_action('pre_version_meta', array(__CLASS__, 'setup_meta_revisions'));
 		add_filter('redirect_post_location', array(__CLASS__, 'filter_redirect_post_location'), 10, 2);
+
+		wp_register_style('scheduled-update-admin', plugins_url('scheduled-update-admin.css', __FILE__));
+		add_action('admin_enqueue_scripts', array(__CLASS__, 'enqueue_edit_style'));
 	}
 
 	public static function create_future_update_status() {
@@ -33,6 +36,13 @@ class Scheduled_Updates {
 				'show_in_admin_status_list' => true
 			)
 		);
+	}
+
+	public static function enqueue_edit_style($hook_suffix) {
+		$post_id = isset($_GET['post']) ? (int)$_GET['post'] : false;
+		if (('post.php' == $hook_suffix) && $post_id && (self::POST_STATUS == get_post_status($post_id))) {
+			wp_enqueue_style('scheduled-update-admin');
+		}
 	}
 
 	/**
