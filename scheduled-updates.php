@@ -23,6 +23,7 @@ class Scheduled_Updates {
 
 		wp_register_style('scheduled-update-admin', plugins_url('scheduled-update-admin.css', __FILE__));
 		add_action('admin_enqueue_scripts', array(__CLASS__, 'enqueue_edit_style'));
+		add_action('wp_insert_post_data', array(__CLASS__, 'maintain_scheduled_update_status'), 10, 2);
 	}
 
 	public static function create_future_update_status() {
@@ -232,6 +233,23 @@ class Scheduled_Updates {
 		}
 	}
 
+	/**
+	 * Prevents WordPress from changing a scheduled update's post_status when saved
+	 *
+	 * @param array $data - Data to be inserted in posts table
+	 * @param array $postarr - Data passed to wp_insert_post
+	 */
+	public static function maintain_scheduled_update_status($data, $postarr) {
+		if (
+			isset($data['post_parent']) &&
+			post_type_supports(get_post_type($data['post_parent']), self::POST_STATUS) &&
+			isset($postarr['original_post_status']) &&
+			(self::POST_STATUS == $postarr['original_post_status'])
+		) {
+			$data['post_status'] = self::POST_STATUS;
+		}
+		return $data;
+	}
 }
 
 add_action('init', array('Scheduled_Updates', 'initialize'), 0); // 0 priority since we are adding actions with priority = 1
