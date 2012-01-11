@@ -15,7 +15,7 @@ class Scheduled_Updates {
 
 	public static function initialize() {
 		add_action('init', array(__CLASS__, 'create_future_update_status'), 1);
-		add_action('post_row_actions', array(__CLASS__, 'action_post_row_actions'));
+		add_action('post_row_actions', array(__CLASS__, 'action_post_row_actions'), 10, 2);
 		add_action('load-edit.php', array(__CLASS__, 'action_check_args'));
 		add_action('Meta_Revisions_init', array(__CLASS__, 'setup_term_revisions'));
 		add_action('pre_version_meta', array(__CLASS__, 'setup_meta_revisions'));
@@ -99,16 +99,14 @@ class Scheduled_Updates {
 	 * @param array $actions
 	 * @return array possibly modified actions
 	 */
-	public static function action_post_row_actions($actions) {
-		if (self::is_schedulable()) {
-			$post_id = get_the_ID();
-
-			if ($update = self::get_scheduled_update_post($post_id)) {
-				$link = self::get_edit_post_link($update->ID, get_post_type($post_id));
+	public static function action_post_row_actions($actions, $post) {
+		if (post_type_supports($post->post_type, self::POST_STATUS) && self::is_schedulable($post->ID)) {
+			if ($update = self::get_scheduled_update_post($post->ID)) {
+				$link = self::get_edit_post_link($update->ID, $post->post_type);
 				$label = __('Edit Scheduled Update', 'scheduled-update');
 				$actions['edit-scheduled-update'] = sprintf('<a href="%s" title="%s">%s</a>', esc_url($link), esc_attr($label), esc_html($label));
 			} else {
-				$link = add_query_arg('schedule_update', $post_id);
+				$link = add_query_arg('schedule_update', $post->ID);
 				$label = __('Schedule Update', 'scheduled-update');
 				$actions['schedule-update'] = sprintf('<a href="%s" title="%s">%s</a>', esc_url($link), esc_attr($label), esc_html($label));
 			}
