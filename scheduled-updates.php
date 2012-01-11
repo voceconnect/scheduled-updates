@@ -19,6 +19,7 @@ class Scheduled_Updates {
 		add_action('load-edit.php', array(__CLASS__, 'action_check_args'));
 		add_action('Meta_Revisions_init', array(__CLASS__, 'setup_term_revisions'));
 		add_action('pre_version_meta', array(__CLASS__, 'setup_meta_revisions'));
+		add_filter('redirect_post_location', array(__CLASS__, 'filter_redirect_post_location'), 10, 2);
 	}
 
 	public static function create_future_update_status() {
@@ -50,7 +51,7 @@ class Scheduled_Updates {
 
 		$revision = wp_get_post_revision(get_post($post_id));
 
-		return self::POST_STATUS == $revision->post_status;
+		return self::is_scheduled_post($revision->ID);
 	}
 
 	/**
@@ -103,7 +104,7 @@ class Scheduled_Updates {
 	}
 
 	/**
-	 * check args to see if we should schedule or update a scheduled post
+	 * Check args to see if we should schedule or update a scheduled post
 	 */
 	public function action_check_args() {
 		if (isset($_REQUEST['edit_scheduled_update']) && $post_id = absint($_REQUEST['edit_scheduled_update'])) {
@@ -115,6 +116,11 @@ class Scheduled_Updates {
 		}
 	}
 
+	/**
+	 * Create a scheduled update. This is a revision with a custom post status.
+	 *
+	 * @param int $post_id
+	 */
 	public function create_update($post_id) {
 		$original_post = get_post($post_id);
 		$revision_id = Meta_Revisions::version_post_meta_and_terms($post_id);
@@ -123,18 +129,63 @@ class Scheduled_Updates {
 
 		wp_update_post($revision);
 
-		$post_type_object = get_post_type_object( $original_post->post_type );
+		$link = self::get_edit_post_link($revision_id, $original_post->post_type);
+
+		wp_redirect($link);
+		exit;
+	}
+
+	/**
+	 * Get the edit post link for a revision that will allow editing instead
+	 * of viewing on revision.php
+	 *
+	 * @param int $revision_id
+	 * @param string $post_type
+	 * @return string
+	 */
+	public static function get_edit_post_link($revision_id, $post_type) {
+		$post_type_object = get_post_type_object( $post_type );
 		if ( !$post_type_object )
 			return;
 
-		if ( !current_user_can( $post_type_object->cap->edit_post, $post_id ) )
+		if ( !current_user_can( $post_type_object->cap->edit_post, $revision_id ) )
 			return;
 
 		$action = '&action=edit';
 		$link = admin_url(sprintf($post_type_object->_edit_link . $action, $revision_id));
 
-		wp_redirect($link);
-		exit;
+		return $link;
+	}
+
+	/**
+	 * Filter the redirect post location
+	 *
+	 * @param string $location
+	 * @param int $post_id
+	 * @return string
+	 */
+	public static function filter_redirect_post_location($location, $post_id) {
+		if (!self::is_scheduled_post($post_id)) {
+			return $location;
+		}
+
+		$revision = get_post($post_id);
+		$parent_post_type = get_post_type($revision->post_parent);
+
+		$location = self::get_edit_post_link($post_id, $parent_post_type);
+
+		return $location;
+
+	}
+
+	/**
+	 * Is this a revision with our custom status?
+	 *
+	 * @param int $post_id
+	 * @return bool
+	 */
+	public static function is_scheduled_post($post_id) {
+		return self::POST_STATUS == get_post_status($post_id);
 	}
 
 	/**
