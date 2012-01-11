@@ -16,7 +16,7 @@ class Scheduled_Updates {
 	public static function initialize() {
 		add_action('init', array(__CLASS__, 'create_future_update_status'), 1);
 		add_action('post_row_actions', array(__CLASS__, 'action_post_row_actions'));
-		add_action('load-edit', array(__CLASS__, 'action_check_args'));
+		add_action('load-edit.php', array(__CLASS__, 'action_check_args'));
 		add_action('Meta_Revisions_init', array(__CLASS__, 'setup_term_revisions'));
 		add_action('pre_version_meta', array(__CLASS__, 'setup_meta_revisions'));
 	}
@@ -113,6 +113,28 @@ class Scheduled_Updates {
 		if (isset($_REQUEST['schedule_update']) && $post_id = absint($_REQUEST['schedule_update'])) {
 			self::create_update($post_id);
 		}
+	}
+
+	public function create_update($post_id) {
+		$original_post = get_post($post_id);
+		$revision_id = Meta_Revisions::version_post_meta_and_terms($post_id);
+		$revision = get_post($revision_id);
+		$revision->post_status = self::POST_STATUS;
+
+		wp_update_post($revision);
+
+		$post_type_object = get_post_type_object( $original_post->post_type );
+		if ( !$post_type_object )
+			return;
+
+		if ( !current_user_can( $post_type_object->cap->edit_post, $post_id ) )
+			return;
+
+		$action = '&action=edit';
+		$link = admin_url(sprintf($post_type_object->_edit_link . $action, $revision_id));
+
+		wp_redirect($link);
+		exit;
 	}
 
 	/**
