@@ -24,6 +24,14 @@ class Scheduled_Updates {
 		wp_register_style('scheduled-update-admin', plugins_url('scheduled-update-admin.css', __FILE__));
 		add_action('admin_enqueue_scripts', array(__CLASS__, 'enqueue_edit_style'));
 		add_action('wp_insert_post_data', array(__CLASS__, 'maintain_scheduled_update_status'), 10, 2);
+
+		$post_types = get_post_types();
+		foreach ($post_types as $post_type) {
+			if (post_type_supports($post_type, self::POST_STATUS)) {
+				add_action("manage_{$post_type}_posts_columns", array(__CLASS__, 'action_manage_posts_columns'));
+				add_action("manage_{$post_type}_posts_custom_column", array(__CLASS__, 'action_manage_posts_custom_column'), 10, 2);
+			}
+		}
 	}
 
 	public static function create_future_update_status() {
@@ -43,6 +51,23 @@ class Scheduled_Updates {
 		$post_id = isset($_GET['post']) ? (int)$_GET['post'] : false;
 		if (('post.php' == $hook_suffix) && $post_id && (self::POST_STATUS == get_post_status($post_id))) {
 			wp_enqueue_style('scheduled-update-admin');
+		}
+	}
+
+	function action_manage_posts_columns($posts_columns) {
+		$posts_columns['scheduled_update'] = __('Scheduled<br />Update', 'scheduled-update');
+
+		return $posts_columns;
+	}
+
+	function action_manage_posts_custom_column($column_name, $post_id) {
+		if ('scheduled_update' == $column_name && $post = self::get_scheduled_update_post($post_id)) {
+			$time = get_post_time( 'G', true, $post );
+			$time_diff = time() - $time;
+			$t_time = get_the_time( __( 'Y/m/d g:i:s A' ), $post );
+			$h_time = sprintf(__('<abbr title="%s">%s from now</abbr>', 'scheduled-update'), $t_time, human_time_diff($time));
+
+			echo $h_time;
 		}
 	}
 
