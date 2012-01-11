@@ -104,9 +104,6 @@ class Scheduled_Updates {
 			$post_id = get_the_ID();
 
 			if ($update = self::get_scheduled_update_post($post_id)) {
-				unset($actions['edit']);
-				unset($actions['inline hide-if-no-js']);
-
 				$link = self::get_edit_post_link($update->ID, get_post_type($post_id));
 				$label = __('Edit Scheduled Update', 'scheduled-update');
 				$actions['edit-scheduled-update'] = sprintf('<a href="%s" title="%s">%s</a>', esc_url($link), esc_attr($label), esc_html($label));
