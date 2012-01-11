@@ -42,16 +42,22 @@ class Scheduled_Updates {
 	 * @param int $post_id
 	 * @return bool
 	 */
-	public static function has_scheduled_update($post_id = 0) {
+	public static function get_scheduled_update_post($post_id = 0) {
 		$post_id = !$post_id ? get_the_ID() : $post_id;
 
 		if (!$post_id) {
 			return false;
 		}
 
-		$revision = wp_get_post_revision(get_post($post_id));
+		$args = array('posts_per_page' => 1, 'orderby' => 'date', 'post_parent' => $post_id, 'post_type' => 'revision', 'post_status' => self::POST_STATUS);
 
-		return self::is_scheduled_post($revision->ID);
+		$revision = get_children($args);
+
+		if (is_array($revision)) {
+			$revision = array_pop($revision);
+		}
+
+		return $revision;
 	}
 
 	/**
@@ -87,10 +93,11 @@ class Scheduled_Updates {
 		if (self::is_schedulable()) {
 			$post_id = get_the_ID();
 
-			if (self::has_scheduled_update()) {
+			if ($update = self::get_scheduled_update_post($post_id)) {
 				unset($actions['edit']);
+				unset($actions['inline hide-if-no-js']);
 
-				$link = add_query_arg('edit_scheduled_update', $post_id);
+				$link = self::get_edit_post_link($update->ID, get_post_type($post_id));
 				$label = __('Edit Scheduled Update', 'scheduled-update');
 				$actions['edit-scheduled-update'] = sprintf('<a href="%s" title="%s">%s</a>', esc_url($link), esc_attr($label), esc_html($label));
 			} else {
