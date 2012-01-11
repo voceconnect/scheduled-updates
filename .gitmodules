@@ -1,0 +1,3 @@
+[submodule "meta-revisions"]
+	path = meta-revisions
+	url = git@github.com:voceconnect/meta-revisions.git

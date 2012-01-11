@@ -7,6 +7,8 @@
 	Author URI: http://plugins.voceconnect.com
 */
 
+require('meta-revisions/meta-revisions.php');
+
 class Scheduled_Updates {
 
 	const POST_STATUS = 'future-update';
@@ -14,6 +16,8 @@ class Scheduled_Updates {
 	public static function initialize() {
 		add_action('init', array(__CLASS__, 'create_future_update_status'), 1);
 		add_action('post_row_actions', array(__CLASS__, 'action_post_row_actions'));
+		add_action('Meta_Revisions_init', array(__CLASS__, 'setup_term_revisions'));
+		add_action('pre_version_meta', array(__CLASS__, 'setup_meta_revisions'));
 	}
 
 	public static function create_future_update_status() {
@@ -88,6 +92,28 @@ class Scheduled_Updates {
 		}
 
 		return ($actions);
+	}
+
+	public static function setup_term_revisions() {
+		$post_types = get_post_types();
+		foreach ($post_types as $post_type) {
+			if (post_type_supports($post_type, self::POST_STATUS)) {
+				$taxonomies = get_object_taxonomies($post_type, 'objects');
+				foreach ($taxonomies as $taxonomy_obj) {
+					meta_revisions_track_taxonomy_field($taxonomy_obj->name, $taxonomy_obj->labels->name, $post_type);
+				}
+			}
+		}
+	}
+
+	public static function setup_meta_revisions($post_id) {
+		$post_type = get_post_type($post_id);
+		if (post_type_supports($post_type, self::POST_STATUS)) {
+			$meta_keys = get_post_custom_keys($post_id);
+			foreach ($meta_keys as $meta_key) {
+				meta_revisions_track_postmeta_field($meta_key, $meta_key, $post_type);
+			}
+		}
 	}
 
 }
