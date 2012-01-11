@@ -94,6 +94,10 @@ class Scheduled_Updates {
 		return ($actions);
 	}
 
+	/**
+	 * For all post types that support scheduled updates,
+	 * use Meta-Revisions plugin to version their taxonomy terms
+	 */
 	public static function setup_term_revisions() {
 		$post_types = get_post_types();
 		foreach ($post_types as $post_type) {
@@ -106,6 +110,12 @@ class Scheduled_Updates {
 		}
 	}
 
+	/**
+	 * For posts with scheduled update support,
+	 * use Meta-Revisions to version their post meta values
+	 *
+	 * @param int $post_id
+	 */
 	public static function setup_meta_revisions($post_id) {
 		$post_type = get_post_type($post_id);
 		if (post_type_supports($post_type, self::POST_STATUS)) {
