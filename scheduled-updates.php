@@ -14,6 +14,7 @@ class Scheduled_Updates {
 	public static function initialize() {
 		add_action('init', array(__CLASS__, 'create_future_update_status'), 1);
 		add_action('post_row_actions', array(__CLASS__, 'action_post_row_actions'));
+		add_action('load-edit', array(__CLASS__, 'action_check_args'));
 	}
 
 	public static function create_future_update_status() {
@@ -73,21 +74,41 @@ class Scheduled_Updates {
 	 * For schedulable posts, update the post row actions. Remove the edit link
 	 * for posts with and update and add a link to edit the update. Add a link
 	 * to schedule and update for posts without an update.
-	 * 
+	 *
 	 * @param array $actions
 	 * @return array possibly modified actions
 	 */
 	public static function action_post_row_actions($actions) {
 		if (self::is_schedulable()) {
+			$post_id = get_the_ID();
+
 			if (self::has_scheduled_update()) {
 				unset($actions['edit']);
-				$actions['edit-scheduled-update'] = '<a href="" title="' . esc_attr( __( 'Edit Scheduled Update', 'scheduled-update' ) ) . '">' . __( 'Edit Scheduled Update' ) . '</a>';
+
+				$link = add_query_arg('edit_scheduled_update', $post_id);
+				$label = __('Edit Scheduled Update', 'scheduled-update');
+				$actions['edit-scheduled-update'] = sprintf('<a href="%s" title="%s">%s</a>', esc_url($link), esc_attr($label), esc_html($label));
 			} else {
-				$actions['schedule-update'] = '<a href="" title="' . esc_attr( __( 'Schedule Update', 'scheduled-update' ) ) . '">' . __( 'Schedule Update' ) . '</a>';
+				$link = add_query_arg('schedule_update', $post_id);
+				$label = __('Schedule Update', 'scheduled-update');
+				$actions['schedule-update'] = sprintf('<a href="%s" title="%s">%s</a>', esc_url($link), esc_attr($label), esc_html($label));
 			}
 		}
 
-		return ($actions);
+		return $actions;
+	}
+
+	/**
+	 * check args to see if we should schedule or update a scheduled post
+	 */
+	public function action_check_args() {
+		if (isset($_REQUEST['edit_scheduled_update']) && $post_id = absint($_REQUEST['edit_scheduled_update'])) {
+			self::edit_update($post_id);
+		}
+
+		if (isset($_REQUEST['schedule_update']) && $post_id = absint($_REQUEST['schedule_update'])) {
+			self::create_update($post_id);
+		}
 	}
 
 }
