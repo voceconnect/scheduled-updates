@@ -32,6 +32,10 @@ class Scheduled_Updates {
 				add_action("manage_{$post_type}_posts_custom_column", array(__CLASS__, 'action_manage_posts_custom_column'), 10, 2);
 			}
 		}
+
+		add_action('transition_post_status', array(__CLASS__, 'schedule_post_update'), 10, 3);
+		add_action('publish_scheduled_update', array(__CLASS__, 'update_post'));
+
 	}
 
 	public static function create_future_update_status() {
@@ -274,6 +278,36 @@ class Scheduled_Updates {
 			$data['post_status'] = self::POST_STATUS;
 		}
 		return $data;
+	}
+
+	/**
+	 * Schedule the post update using the date of the "future-status" version
+	 *
+	 * @param string $new_status
+	 * @param string $old_status
+	 * @param object $post
+	 */
+	public static function schedule_post_update($new_status, $old_status, $post) {
+		if (
+			(self::POST_STATUS == $old_status) &&
+			(self::POST_STATUS == $new_status) &&
+			post_type_supports(get_post_type($post->post_parent), self::POST_STATUS)
+		) {
+			wp_clear_scheduled_hook( 'publish_scheduled_update', array( $post->ID ) );
+			wp_schedule_single_event( strtotime( get_gmt_from_date( $post->post_date ) . ' GMT') , 'publish_scheduled_update', array( $post->ID ) );
+		}
+	}
+
+	/**
+	 * Use the revision functionality to "restore" the scheduled update
+	 *
+	 * @param int $post_id - ID of the scheduled update post
+	 */
+	public static function update_post($post_id) {
+		$result = wp_restore_post_revision($post_id);
+		if ($result && !is_wp_error($result)) {
+			wp_delete_post($post_id);
+		}
 	}
 }
 
