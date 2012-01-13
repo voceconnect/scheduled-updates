@@ -35,7 +35,7 @@ class Scheduled_Updates {
 
 		add_action('transition_post_status', array(__CLASS__, 'schedule_post_update'), 10, 3);
 		add_action('publish_scheduled_update', array(__CLASS__, 'update_post'));
-
+		add_filter('meta_revisions_should_version_meta', array(__CLASS__, 'prevent_scheduled_update_revision'), 10, 2);
 	}
 
 	public static function create_future_update_status() {
@@ -44,7 +44,7 @@ class Scheduled_Updates {
 			array(
 				'label' => 'Scheduled Update',
 				'exclude_from_search' => true,
-				'public' => true,
+				'public' => false,
 				'show_in_admin_all_list' => false,
 				'show_in_admin_status_list' => false
 			)
@@ -312,6 +312,20 @@ class Scheduled_Updates {
 		if ($result && !is_wp_error($result)) {
 			wp_delete_post($post_id);
 		}
+	}
+
+	/**
+	 * Prevent meta-revisions to future-update status posts
+	 *
+	 * @param bool $should_version_meta
+	 * @param int $post_id
+	 */
+	public static function prevent_scheduled_update_revision($should_version_meta, $post_id) {
+		$post = get_post($post_id);
+		if (post_type_supports(get_post_type($post), self::POST_STATUS) && (self::POST_STATUS == $post->post_status)) {
+			$should_version_meta = false;
+		}
+		return $should_version_meta;
 	}
 }
 
