@@ -45,8 +45,8 @@ class Scheduled_Updates {
 				'label' => 'Scheduled Update',
 				'exclude_from_search' => true,
 				'public' => true,
-				'show_in_admin_all_list' => true,
-				'show_in_admin_status_list' => true
+				'show_in_admin_all_list' => false,
+				'show_in_admin_status_list' => false
 			)
 		);
 	}
@@ -164,12 +164,14 @@ class Scheduled_Updates {
 	 * @param int $post_id
 	 */
 	public function create_update($post_id) {
+		global $wpdb;
+
 		$original_post = get_post($post_id);
 		$revision_id = Meta_Revisions::version_post_meta_and_terms($post_id);
-		$revision = get_post($revision_id);
-		$revision->post_status = self::POST_STATUS;
 
-		wp_update_post($revision);
+		// mark this as a future-update, and revert to the original post type for edit purposes
+		// NOTE: this is meant to be a direct update in order avoid an additional revision being created, taking the attached meta/terms with it
+		$wpdb->update($wpdb->posts, array('post_status' => self::POST_STATUS, 'post_type' => $original_post->post_type), array('ID' => $revision_id));
 
 		$link = self::get_edit_post_link($revision_id, $original_post->post_type);
 
@@ -304,6 +306,8 @@ class Scheduled_Updates {
 	 * @param int $post_id - ID of the scheduled update post
 	 */
 	public static function update_post($post_id) {
+		global $wpdb;
+		$wpdb->update($wpdb->posts, array('post_type' => 'revision', 'post_status' => 'inherit'), array('ID' => $post_id));
 		$result = wp_restore_post_revision($post_id);
 		if ($result && !is_wp_error($result)) {
 			wp_delete_post($post_id);
