@@ -89,7 +89,7 @@ class Scheduled_Updates {
 			return false;
 		}
 
-		$args = array('posts_per_page' => 1, 'orderby' => 'date', 'post_parent' => $post_id, 'post_type' => 'revision', 'post_status' => self::POST_STATUS);
+		$args = array('posts_per_page' => 1, 'orderby' => 'date', 'post_parent' => $post_id, 'post_status' => self::POST_STATUS);
 
 		$revision = get_children($args);
 
@@ -171,7 +171,12 @@ class Scheduled_Updates {
 
 		// mark this as a future-update, and revert to the original post type for edit purposes
 		// NOTE: this is meant to be a direct update in order avoid an additional revision being created, taking the attached meta/terms with it
-		$wpdb->update($wpdb->posts, array('post_status' => self::POST_STATUS, 'post_type' => $original_post->post_type), array('ID' => $revision_id));
+		$fields = array(
+			'post_status' => self::POST_STATUS,
+			'post_type' => $original_post->post_type,
+			'post_date' => date('Y-m-d H:i:s', strtotime('+1 day'))
+		);
+		$wpdb->update($wpdb->posts, $fields, array('ID' => $revision_id));
 
 		$link = self::get_edit_post_link($revision_id, $original_post->post_type);
 
