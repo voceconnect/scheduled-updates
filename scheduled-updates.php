@@ -20,6 +20,7 @@ class Scheduled_Updates {
 		add_action('Meta_Revisions_init', array(__CLASS__, 'setup_term_revisions'));
 		add_action('pre_version_meta', array(__CLASS__, 'setup_meta_revisions'));
 		add_filter('redirect_post_location', array(__CLASS__, 'filter_redirect_post_location'), 10, 2);
+		add_action('load-post.php', array(__CLASS__, 'action_add_admin_notice'));
 
 		wp_register_style('scheduled-update-admin', plugins_url('scheduled-update-admin.css', __FILE__));
 		add_action('admin_enqueue_scripts', array(__CLASS__, 'enqueue_edit_style'));
@@ -73,6 +74,32 @@ class Scheduled_Updates {
 
 			echo $h_time;
 		}
+	}
+
+	/**
+	 * add an admin notice if the post being edited is a scheduled post
+	 */
+	function action_add_admin_notice() {
+		if (isset($_REQUEST['action']) && 'edit' == $_REQUEST['action'] && isset($_REQUEST['post'])) {
+			if (self::is_scheduled_post(absint($_REQUEST['post']))) {
+				add_action('admin_notices', array(__CLASS__, 'action_show_admin_notice'));
+			}
+		}
+	}
+
+	/**
+	 * show an admin notice to warn the user they are editing a scheduled post
+	 * and give them a link to edit the original
+	 */
+	function action_show_admin_notice() {
+		$scheduled_post = get_post(absint($_REQUEST['post']));
+		$edit_url = get_edit_post_link($scheduled_post->post_parent);
+		?>
+		<div class="updated">
+			<p><b>NOTE: You are editing a Scheduled Update.</b> This update will go live
+				once the publish date of this post is reached. <a href="<?php echo esc_url($edit_url); ?>">Edit the original post</a>.</p>
+		</div>
+		<?php
 	}
 
 	/**
