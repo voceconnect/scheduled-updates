@@ -24,6 +24,8 @@ class Scheduled_Updates {
 		add_action('media_upload_tabs', array(__CLASS__, 'action_maybe_hide_media_upload_tabs'), 100);
 		add_action('media_upload_default_type', array(__CLASS__, 'action_maybe_change_media_upload_default_type'));
 		add_action('media_upload_library', array(__CLASS__, 'action_maybe_add_media_upload_notice'));
+		add_filter('pre_get_shortlink', array(__CLASS__, 'filter_maybe_hide_shortlink'));
+		add_filter('get_sample_permalink_html', array(__CLASS__, 'filter_maybe_remove_sample_permalink_html'));
 
 		wp_register_style('scheduled-update-admin', plugins_url('scheduled-update-admin.css', __FILE__));
 		add_action('admin_enqueue_scripts', array(__CLASS__, 'enqueue_edit_style'));
@@ -84,9 +86,13 @@ class Scheduled_Updates {
 	 */
 	function action_maybe_add_post_edit_admin_notice() {
 		if (isset($_REQUEST['action']) && 'edit' == $_REQUEST['action'] && isset($_REQUEST['post'])) {
-			if (self::is_scheduled_post(absint($_REQUEST['post']))) {
+			$post_id = absint($_REQUEST['post']);
+			if (self::is_scheduled_post($post_id)) {
+				add_action('admin_notices', array(__CLASS__, 'action_show_scheduled_post_edit_admin_notice'));
+			} else if (self::get_scheduled_update_post($post_id)) {
 				add_action('admin_notices', array(__CLASS__, 'action_show_post_edit_admin_notice'));
 			}
+
 		}
 	}
 
@@ -94,7 +100,7 @@ class Scheduled_Updates {
 	 * show an admin notice to warn the user they are editing a scheduled post
 	 * and give them a link to edit the original
 	 */
-	function action_show_post_edit_admin_notice() {
+	function action_show_scheduled_post_edit_admin_notice() {
 		$scheduled_post = get_post(absint($_REQUEST['post']));
 		$edit_url = get_edit_post_link($scheduled_post->post_parent);
 		?>
@@ -106,13 +112,27 @@ class Scheduled_Updates {
 	}
 
 	/**
+	 * show an admin notice to warn the user they are editing a post which has
+	 * a scheduled update and give them a link to edit the original
+	 */
+	function action_show_post_edit_admin_notice() {
+		$scheduled_post = self::get_scheduled_update_post(absint($_REQUEST['post']));
+		$edit_url = get_edit_post_link($scheduled_post->ID);
+		?>
+		<div class="updated">
+			<p><b>NOTE: This post has a Scheduled Update.</b> <a href="<?php echo esc_url($edit_url); ?>">Edit the Scheduled Update</a>.</p>
+		</div>
+		<?php
+	}
+
+	/**
 	 * if the post is scheduled, show a warning in the media upload window
 	 */
 	function action_maybe_add_media_upload_notice() {
 		if (isset($_REQUEST['post_id']) && self::is_scheduled_post(absint($_REQUEST['post_id']))) {
 			?>
 		<div class="updated" style="margin-bottom: 10px;">
-			<p><b>NOTE: You are editing a Scheduled Post. Adding new media is not
+			<p><b>NOTE: You are editing a Scheduled Update. Adding new media is not
 			supported, only inserting existing media from the Library.</b></p>
 		</div>
 		<?php
@@ -136,12 +156,46 @@ class Scheduled_Updates {
 		return $tabs;
 	}
 
+	/**
+	 * if the post is scheduled, set the default media tab to be the library
+	 *
+	 * @param string $type
+	 * @return string
+	 */
 	function action_maybe_change_media_upload_default_type($type) {
 		if (isset($_REQUEST['post_id']) && self::is_scheduled_post(absint($_REQUEST['post_id']))) {
 			$type = 'library';
 		}
 
 		return $type;
+	}
+
+	/**
+	 * if the post is scheduled, hide the shortlink
+	 *
+	 * @param string $link
+	 * @return string
+	 */
+	function filter_maybe_hide_shortlink($link) {
+		if (self::is_scheduled_post(get_the_ID())) {
+			$link = '';
+		}
+
+		return $link;
+	}
+
+	/**
+	 * if the post is scheduled, remove the permalink display/editing
+	 *
+	 * @param string $html
+	 * @return string
+	 */
+	function filter_maybe_remove_sample_permalink_html($html) {
+		if (self::is_scheduled_post(get_the_ID())) {
+			$html = '';
+		}
+
+		return $html;
 	}
 
 	/**
