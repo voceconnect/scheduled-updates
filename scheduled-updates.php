@@ -24,8 +24,8 @@ class Scheduled_Updates {
 		add_action('media_upload_tabs', array(__CLASS__, 'action_maybe_hide_media_upload_tabs'), 100);
 		add_action('media_upload_default_type', array(__CLASS__, 'action_maybe_change_media_upload_default_type'));
 		add_action('media_upload_library', array(__CLASS__, 'action_maybe_add_media_upload_notice'));
-		add_filter('pre_get_shortlink', array(__CLASS__, 'filter_maybe_hide_shortlink'));
-		add_filter('get_sample_permalink_html', array(__CLASS__, 'filter_maybe_remove_sample_permalink_html'));
+		add_filter('pre_get_shortlink', array(__CLASS__, 'filter_maybe_hide_shortlink'), 10, 2);
+		add_filter('get_sample_permalink_html', array(__CLASS__, 'filter_maybe_remove_sample_permalink_html'), 10, 2);
 
 		wp_register_style('scheduled-update-admin', plugins_url('scheduled-update-admin.css', __FILE__));
 		add_action('admin_enqueue_scripts', array(__CLASS__, 'enqueue_edit_style'));
@@ -176,8 +176,8 @@ class Scheduled_Updates {
 	 * @param string $link
 	 * @return string
 	 */
-	function filter_maybe_hide_shortlink($link) {
-		if (self::is_scheduled_post(get_the_ID())) {
+	function filter_maybe_hide_shortlink($link, $post_id) {
+		if (self::is_scheduled_post($post_id)) {
 			$link = '';
 		}
 
@@ -190,8 +190,8 @@ class Scheduled_Updates {
 	 * @param string $html
 	 * @return string
 	 */
-	function filter_maybe_remove_sample_permalink_html($html) {
-		if (self::is_scheduled_post(get_the_ID())) {
+	function filter_maybe_remove_sample_permalink_html($html, $post_id) {
+		if (self::is_scheduled_post($post_id)) {
 			$html = '';
 		}
 
